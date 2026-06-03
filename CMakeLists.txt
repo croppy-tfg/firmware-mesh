@@ -45,13 +45,13 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-    "Drivers/SSD1306/Src/ssd1306.c"
+    "Drivers/SH1106/Src/sh1106.c"
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    "Drivers/SSD1306/Inc"
+    "Drivers/SH1106/Inc"
 )
 
 # Add project symbols (macros)

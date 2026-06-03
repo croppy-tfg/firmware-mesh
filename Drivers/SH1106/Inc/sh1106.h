@@ -1,43 +1,43 @@
 /**
-  * @file    ssd1306.h
+  * @file    SH1106.h
   * @author  JM
-  * @brief   Driver library for SSD1306 OLED display (128x32) using I2C for STM32F1.
+  * @brief   Driver library for SH1106 OLED display (128x32) using I2C for STM32F1.
   * @date    2026
   */
 
-#ifndef __SSD1306_H__
-#define __SSD1306_H__
+#ifndef __SH1106_H__
+#define __SH1106_H__
 
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_i2c.h"
 
 // 00111100 << 1 = 01111000 = addr [7:1] + r/w [0]
-#define SSD1306_I2C_ADDR        (0x3C << 1)
+#define SH1106_I2C_ADDR        (0x3C << 1)
 
-#define SSD1306_COMMAND         0x00
-#define SSD1306_DATA            0x40
+#define SH1106_COMMAND         0x00
+#define SH1106_DATA            0x40
 
-#define SSD1306_WIDTH           128
-#define SSD1306_HEIGHT          32
+#define SH1106_WIDTH           128
+#define SH1106_HEIGHT          64
 
 typedef enum {
     PIXEL_OFF = 0x00,
     PIXEL_ON = 0x01
-} SSD1306_PixelState;
+} SH1106_PixelState;
 
 /**
   * @brief Initializes the display sending the appropiate I2C commands
   * @param None
   * @retval None
   */
-void SSD1306_Init(void);
+void SH1106_Init(void);
 
 /**
   * @brief Sends a command to the display via I2C
   * @param command: command to be sent
   * @retval None
   */
-void SSD1306_WriteCommand(uint8_t command);
+void SH1106_WriteCommand(uint8_t command);
 
 /**
   * @brief Sends I2C data to the display
@@ -45,14 +45,14 @@ void SSD1306_WriteCommand(uint8_t command);
   * @param size: the number of bytes from data
   * @retval None
   */
-void SSD1306_WriteData(uint8_t *data, uint16_t size);
+void SH1106_WriteData(uint8_t *data, uint16_t size);
 
 /**
   * @brief Writes the content of the frame buffer into de GDDRAM
   * @param None
   * @retval None
   */
-void SSD1306_UpdateScreen(void);
+void SH1106_UpdateScreen(void);
 
 /**
   * @brief Turns on/off the selected pixel.
@@ -68,7 +68,7 @@ void SSD1306_UpdateScreen(void);
   * @param state: PIXEL_ON (0x01) or PIXEL_OFF (0x00)
   * @retval None
   */
-void SSD1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_PixelState state);
+void SH1106_DrawPixel(uint8_t x, uint8_t y, SH1106_PixelState state);
 
 /**
   * @brief Draws a monochrome bitmap on the screen
@@ -79,7 +79,7 @@ void SSD1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_PixelState state);
   * @param height: image height in pixels
   * @retval None
   */
-void SSD1306_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height);
+void SH1106_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height);
 
 /**
   * @brief Writes a letter from a font map into the display.
@@ -89,13 +89,13 @@ void SSD1306_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t wid
   * @retval None
   * @version WIP
   */
-void SSD1306_WriteLetter(uint8_t fontmap[][5], uint8_t index, uint8_t x, uint8_t y);
+void SH1106_WriteLetter(uint8_t fontmap[][5], uint8_t index, uint8_t x, uint8_t y);
 
 /**
   * @brief Clears the display
   * @param None
   * @retval None
   */
-void SSD1306_Clear(void);
+void SH1106_Clear(void);
 
-#endif // __SSD1306_H__
+#endif // __SH1106_H__
