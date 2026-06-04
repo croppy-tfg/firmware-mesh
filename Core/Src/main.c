@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "sh1106.h"
+#include "stm32f1xx_hal.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +68,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  const uint8_t bitmap[] = {};
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -92,8 +93,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   SH1106_Init();
   SH1106_Clear();
-  
-  SH1106_DrawBitmap(48, 0, bitmap, 64, 64);
+
+  SH1106_Print("BOMBARDEEN LA US", CENTER_H, CENTER_V);
 
   SH1106_UpdateScreen();
   /* USER CODE END 2 */

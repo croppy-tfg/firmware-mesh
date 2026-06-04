@@ -2,25 +2,113 @@
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_hal_i2c.h"
+#include <stdint.h>
 
 extern I2C_HandleTypeDef hi2c1;
 
 /**
- * @brief The size of the display is 128x32 px. The display data 
- * organization consists in 4 pages of 128x8 px each, so the buffer 
- * below needs to be 512B long to store all the pages.
+ * @brief The size of the display is 128x64 px. The display data 
+ * organization consists in 8 pages of 128x8 px each, so the buffer 
+ * below needs to be 1024B long to store all the pages.
  */
-static uint8_t SH1106_Buffer[512];
+static uint8_t SH1106_Buffer[SH1106_BUFFER_SIZE];
 
-// Simple font map to print a simple message (Hola Lau)
-const uint8_t Font5x7_Simple[][5] = {
-    {0x7C, 0x08, 0x08, 0x08, 0x7C}, // H (Índice 0)
-    {0x38, 0x44, 0x44, 0x44, 0x38}, // o (Índice 1)
-    {0x7F, 0x40, 0x40, 0x40, 0x40}, // l (Índice 2)
-    {0x7C, 0x12, 0x11, 0x12, 0x7C}, // a (Índice 3)
-    {0x00, 0x00, 0x00, 0x00, 0x00}, // Espacio (Índice 4)
-    {0x7F, 0x40, 0x40, 0x40, 0x40}, // L (Índice 5)
-    {0x3C, 0x40, 0x40, 0x40, 0x3C}  // u (Índice 6)
+const uint8_t fontmap[][5] = {
+    {0x00, 0x00, 0x00, 0x00, 0x00}, // ' '
+    {0x00, 0x00, 0x5f, 0x00, 0x00}, // !
+    {0x00, 0x07, 0x00, 0x07, 0x00}, // "
+    {0x14, 0x7f, 0x14, 0x7f, 0x14}, // #
+    {0x24, 0x2a, 0x7f, 0x2a, 0x12}, // $
+    {0x23, 0x13, 0x08, 0x64, 0x62}, // %
+    {0x36, 0x49, 0x55, 0x22, 0x50}, // &
+    {0x00, 0x05, 0x03, 0x00, 0x00}, // '
+    {0x00, 0x1c, 0x22, 0x41, 0x00}, // (
+    {0x00, 0x41, 0x22, 0x1c, 0x00}, // )
+    {0x14, 0x08, 0x3e, 0x08, 0x14}, // *
+    {0x08, 0x08, 0x3e, 0x08, 0x08}, // +
+    {0x00, 0x50, 0x30, 0x00, 0x00}, // ,
+    {0x08, 0x08, 0x08, 0x08, 0x08}, // -
+    {0x00, 0x60, 0x60, 0x00, 0x00}, // .
+    {0x20, 0x10, 0x08, 0x04, 0x02}, // /
+    {0x3e, 0x51, 0x49, 0x45, 0x3e}, // 0
+    {0x00, 0x42, 0x7f, 0x40, 0x00}, // 1
+    {0x42, 0x61, 0x51, 0x49, 0x46}, // 2
+    {0x21, 0x41, 0x45, 0x4b, 0x31}, // 3
+    {0x18, 0x14, 0x12, 0x7f, 0x10}, // 4
+    {0x27, 0x45, 0x45, 0x45, 0x39}, // 5
+    {0x3c, 0x4a, 0x49, 0x49, 0x30}, // 6
+    {0x01, 0x71, 0x09, 0x05, 0x03}, // 7
+    {0x36, 0x49, 0x49, 0x49, 0x36}, // 8
+    {0x06, 0x49, 0x49, 0x29, 0x1e}, // 9
+    {0x00, 0x36, 0x36, 0x00, 0x00}, // :
+    {0x00, 0x56, 0x36, 0x00, 0x00}, // ;
+    {0x08, 0x14, 0x22, 0x41, 0x00}, // <
+    {0x14, 0x14, 0x14, 0x14, 0x14}, // =
+    {0x00, 0x41, 0x22, 0x14, 0x08}, // >
+    {0x02, 0x01, 0x51, 0x09, 0x06}, // ?
+    {0x32, 0x49, 0x79, 0x41, 0x3e}, // @
+    {0x7e, 0x11, 0x11, 0x11, 0x7e}, // A
+    {0x7f, 0x49, 0x49, 0x49, 0x36}, // B
+    {0x3e, 0x41, 0x41, 0x41, 0x22}, // C
+    {0x7f, 0x41, 0x41, 0x22, 0x1c}, // D
+    {0x7f, 0x49, 0x49, 0x49, 0x41}, // E
+    {0x7f, 0x09, 0x09, 0x09, 0x01}, // F
+    {0x3e, 0x41, 0x49, 0x49, 0x7a}, // G
+    {0x7f, 0x08, 0x08, 0x08, 0x7f}, // H
+    {0x00, 0x41, 0x7f, 0x41, 0x00}, // I
+    {0x20, 0x40, 0x41, 0x3f, 0x01}, // J
+    {0x7f, 0x08, 0x14, 0x22, 0x41}, // K
+    {0x7f, 0x40, 0x40, 0x40, 0x40}, // L
+    {0x7f, 0x02, 0x0c, 0x02, 0x7f}, // M
+    {0x7f, 0x04, 0x08, 0x10, 0x7f}, // N
+    {0x3e, 0x41, 0x41, 0x41, 0x3e}, // O
+    {0x7f, 0x09, 0x09, 0x09, 0x06}, // P
+    {0x3e, 0x41, 0x51, 0x21, 0x5e}, // Q
+    {0x7f, 0x09, 0x19, 0x29, 0x46}, // R
+    {0x46, 0x49, 0x49, 0x49, 0x31}, // S
+    {0x01, 0x01, 0x7f, 0x01, 0x01}, // T
+    {0x3f, 0x40, 0x40, 0x40, 0x3f}, // U
+    {0x1f, 0x20, 0x40, 0x20, 0x1f}, // V
+    {0x3f, 0x40, 0x38, 0x40, 0x3f}, // W
+    {0x63, 0x14, 0x08, 0x14, 0x63}, // X
+    {0x07, 0x08, 0x70, 0x08, 0x07}, // Y
+    {0x61, 0x51, 0x49, 0x45, 0x43}, // Z
+    {0x00, 0x7f, 0x41, 0x41, 0x00}, // [
+    {0x02, 0x04, 0x08, 0x10, 0x20}, // backslash
+    {0x00, 0x41, 0x41, 0x7f, 0x00}, // ]
+    {0x04, 0x02, 0x01, 0x02, 0x04}, // ^
+    {0x40, 0x40, 0x40, 0x40, 0x40}, // _
+    {0x00, 0x01, 0x02, 0x04, 0x00}, // `
+    {0x20, 0x54, 0x54, 0x54, 0x78}, // a
+    {0x7f, 0x48, 0x44, 0x44, 0x38}, // b
+    {0x38, 0x44, 0x44, 0x44, 0x20}, // c
+    {0x38, 0x44, 0x44, 0x48, 0x7f}, // d
+    {0x38, 0x54, 0x54, 0x54, 0x18}, // e
+    {0x08, 0x7e, 0x09, 0x01, 0x02}, // f
+    {0x0c, 0x52, 0x52, 0x52, 0x3e}, // g
+    {0x7f, 0x08, 0x04, 0x04, 0x78}, // h
+    {0x00, 0x44, 0x7d, 0x40, 0x00}, // i
+    {0x20, 0x40, 0x44, 0x3d, 0x00}, // j
+    {0x7f, 0x10, 0x28, 0x44, 0x00}, // k
+    {0x00, 0x41, 0x7f, 0x40, 0x00}, // l
+    {0x7c, 0x04, 0x18, 0x04, 0x78}, // m
+    {0x7c, 0x08, 0x04, 0x04, 0x78}, // n
+    {0x38, 0x44, 0x44, 0x44, 0x38}, // o
+    {0x7c, 0x14, 0x14, 0x14, 0x08}, // p
+    {0x08, 0x14, 0x14, 0x18, 0x7f}, // q
+    {0x7c, 0x08, 0x04, 0x04, 0x08}, // r
+    {0x48, 0x54, 0x54, 0x54, 0x20}, // s
+    {0x04, 0x3f, 0x44, 0x40, 0x20}, // t
+    {0x3c, 0x40, 0x40, 0x20, 0x7c}, // u
+    {0x1c, 0x20, 0x40, 0x20, 0x1c}, // v
+    {0x3c, 0x40, 0x30, 0x40, 0x3c}, // w
+    {0x44, 0x28, 0x10, 0x28, 0x44}, // x
+    {0x0c, 0x50, 0x50, 0x50, 0x3c}, // y
+    {0x44, 0x64, 0x54, 0x4c, 0x44}, // z
+    {0x00, 0x08, 0x36, 0x41, 0x00}, // {
+    {0x00, 0x00, 0x7f, 0x00, 0x00}, // |
+    {0x00, 0x41, 0x36, 0x08, 0x00}, // }
+    {0x10, 0x08, 0x08, 0x10, 0x08}, // ~
 };
 
 void SH1106_Init(void)
@@ -30,38 +118,39 @@ void SH1106_Init(void)
     SH1106_WriteCommand(0xAE); // Display OFF
 
     SH1106_WriteCommand(0xD5); // Display Clock Divide Ratio
-    SH1106_WriteCommand(0x80); // \_ 0x80 (Default value)
+    SH1106_WriteCommand(0x50); // \_ Default
 
     SH1106_WriteCommand(0xA8); // Multiplex Ratio
-    SH1106_WriteCommand(0x3F); // \_ 0x1F (32 rows)
+    SH1106_WriteCommand(0x3F); // \_ 64 rows to scan
 
     SH1106_WriteCommand(0xD3); // Display Offset
     SH1106_WriteCommand(0x00); // \_ No offset
 
     SH1106_WriteCommand(0x40); // Display Start Line: 0
 
-    SH1106_WriteCommand(0x8D); // Charge Pump
-    SH1106_WriteCommand(0x14); // \_ Enable charge pump
+    SH1106_WriteCommand(0xAD); // DC-DC Pump
+    SH1106_WriteCommand(0x8B); // \_ Enable charge pump
 
     SH1106_WriteCommand(0xA1); // Mirror H
-
     SH1106_WriteCommand(0xC8); // Mirror V
 
     SH1106_WriteCommand(0xDA); // COM Pins Hardware Config
-    SH1106_WriteCommand(0x02); // 0x02 -> sequential and disable remap
+    SH1106_WriteCommand(0x12); // 0x12 -> sequential and disable remap
 
     SH1106_WriteCommand(0x81); // Contrast Control
-    SH1106_WriteCommand(0x8F); // \_ Medium-High brightness
+    SH1106_WriteCommand(0xBF); // \_ Medium-High brightness
 
     SH1106_WriteCommand(0xD9); // Pre-charge Period
-    SH1106_WriteCommand(0xF1); // \_ 0xF1
+    SH1106_WriteCommand(0x22); // \_ 0x22
 
     SH1106_WriteCommand(0xDB); // VCOMH Deselect Level
-    SH1106_WriteCommand(0x40); // \_ 0x40
+    SH1106_WriteCommand(0x35); // \_ 0x35
 
-    SH1106_WriteCommand(0xA4); // The output will follow the GDDRAM content
+    SH1106_WriteCommand(0xA4); // Resume content from GDDRAM
+    SH1106_WriteCommand(0xA6); // Set entire display ON
 
-    SH1106_WriteCommand(0xA6); // Normal Display (1 ON, 0 OFF)
+    SH1106_Clear();
+    SH1106_UpdateScreen();
 
     SH1106_WriteCommand(0xAF); // Display ON
 }
@@ -69,74 +158,100 @@ void SH1106_Init(void)
 void SH1106_WriteCommand(uint8_t command)
 {
     // 0x00 -> sending a command
-    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, 0x00, 1,
+    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_COMMAND_ADDR, 1,
         &command, 1, HAL_MAX_DELAY);
 }
 
 void SH1106_WriteData(uint8_t *data, uint16_t size)
 {
     // 0x40 -> sending data to GDDRAM
-    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, 0x40, 1,
-            data, size, HAL_MAX_DELAY);
+    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_DATA_ADDR, 1,
+        data, size, HAL_MAX_DELAY);
 }
 
 void SH1106_UpdateScreen(void) 
 {
-    for (uint8_t i = 0; i < 4; i++) {
-        SH1106_WriteCommand(0xB0 + i); // Page Address (only in page addressing mode)
-        
-        SH1106_WriteCommand(0x00); // Lower Column Address
-                                   // \_ 0000XXXX
-
-        SH1106_WriteCommand(0x10); // Higher Column Address (0)
-                                   // \_ 0001XXXX
+    for (uint8_t i = 0; i < 8; i++) {
+        SH1106_WriteCommand(0xB0 + i); // Page address
+        SH1106_WriteCommand(0x02); // Lower column offset
+        SH1106_WriteCommand(0x10); // Higher column offset
 
         // Dumps the content of the buffer page by page (selected
-        // by i * 128) to the display (128B each time)
+        // by i * SH1106_WIDTH) to the display (128B each time)
         SH1106_WriteData(&SH1106_Buffer[SH1106_WIDTH * i], SH1106_WIDTH);
     }
 }
 
 void SH1106_DrawPixel(uint8_t x, uint8_t y, SH1106_PixelState state) 
 {
-    if (x >= 128 || y >= 32) return; // out of range
+    if (x >= SH1106_WIDTH || y >= SH1106_HEIGHT) return; // out of range
+
     if (state == PIXEL_ON)
-        SH1106_Buffer[x + (y / 8) * 128] |= (1 << (y % 8));
+        SH1106_Buffer[x + (y / 8) * SH1106_WIDTH] |= (1 << (y % 8));
     else
-        SH1106_Buffer[x + (y / 8) * 128] &= ~(1 << (y % 8));
+        SH1106_Buffer[x + (y / 8) * SH1106_WIDTH] &= ~(1 << (y % 8));
 }
 
-void SH1106_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height) 
+void SH1106_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height)
 {
     for (uint8_t i = 0; i < width; i++) {
         for (uint8_t j = 0; j < height; j++) {
-            // calculate the bit inside the bitmap
-            uint8_t byte_index = i + (j / 8) * width;
-            uint8_t bit_index = j % 8;
-            
-            // if the bit is '1', the px is turned on
-            if (bitmap[byte_index] & (1 << bit_index)) {
+            // if the bit corresponding to the actual pixel is ON, it's drawn
+            if (bitmap[i + (j / 8) * width] & (1 << (j % 8))) {
                 SH1106_DrawPixel(x + i, y + j, PIXEL_ON);
             }
         }
     }
 }
 
-void SH1106_WriteLetter(uint8_t fontmap[][5], uint8_t index, uint8_t x, uint8_t y)
+void SH1106_WriteLetter(uint8_t fontmap[][5], uint8_t index, uint8_t x, uint8_t y) 
 {
-    for (uint8_t i = 0; i < 5; i++) { // each letter is 5B (5 columns)
+    for (uint8_t i = 0; i < 5; i++) {
         uint8_t column = fontmap[index][i];
+        // the letter is drawn column by column
         for (uint8_t j = 0; j < 8; j++) {
-            if ((column >> j) & 0x01) { // only draw those pixels which are ON
+            if ((column >> j) & 0x01) {
                 SH1106_DrawPixel(x + i, y + j, PIXEL_ON);
             }
         }
+    }
+}
+
+void SH1106_Print(char *text, SH1106_HorizontalAlign h_align, SH1106_VerticalAlign v_align)
+{
+    uint8_t text_len = 0;
+    while (text[text_len] != '\0') text_len++;
+
+    uint8_t total_width = text_len * 6; 
+    uint8_t total_height = 8; // one page = 8 bits
+
+    uint8_t x_pos = 0;
+    uint8_t y_pos = 0;
+
+    if (h_align == CENTER_H) {
+        x_pos = (SH1106_WIDTH - total_width) / 2;
+    } else if (h_align == END_H) {
+        x_pos = SH1106_WIDTH - total_width;
+    } else {
+        x_pos = 0; // START_H
+    }
+
+    if (v_align == CENTER_V) {
+        y_pos = (SH1106_HEIGHT - total_height) / 2;
+    } else if (v_align == END_V) {
+        y_pos = SH1106_HEIGHT - total_height;
+    } else {
+        y_pos = 0; // START_V
+    }
+
+    for (uint8_t i = 0; i < text_len; i++) {
+        SH1106_WriteLetter(fontmap, text[i] - 32, x_pos + (i * 6), y_pos);
     }
 }
 
 void SH1106_Clear(void) 
 {
-    for (int i = 0; i < 512; i++) {
+    for (uint16_t i = 0; i < SH1106_BUFFER_SIZE; i++) {
         SH1106_Buffer[i] = 0x00;
     }
 }

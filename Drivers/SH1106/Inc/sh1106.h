@@ -1,7 +1,7 @@
 /**
-  * @file    SH1106.h
+  * @file    sh1106.h
   * @author  JM
-  * @brief   Driver library for SH1106 OLED display (128x32) using I2C for STM32F1.
+  * @brief   Driver library for SH1106 OLED display (128x64) using I2C for STM32F1.
   * @date    2026
   */
 
@@ -12,18 +12,31 @@
 #include "stm32f1xx_hal_i2c.h"
 
 // 00111100 << 1 = 01111000 = addr [7:1] + r/w [0]
-#define SH1106_I2C_ADDR        (0x3C << 1)
+#define SH1106_I2C_ADDR             (0x3C << 1)
 
-#define SH1106_COMMAND         0x00
-#define SH1106_DATA            0x40
+#define SH1106_COMMAND_ADDR         0x00
+#define SH1106_DATA_ADDR            0x40
 
-#define SH1106_WIDTH           128
-#define SH1106_HEIGHT          64
+#define SH1106_WIDTH                128
+#define SH1106_HEIGHT               64
+#define SH1106_BUFFER_SIZE          (SH1106_WIDTH * SH1106_HEIGHT / 8)
 
 typedef enum {
     PIXEL_OFF = 0x00,
     PIXEL_ON = 0x01
 } SH1106_PixelState;
+
+typedef enum {
+  START_H = 0x00,
+  CENTER_H = 0x01,
+  END_H = 0x02
+} SH1106_HorizontalAlign;
+
+typedef enum {
+  START_V = 0x00,
+  CENTER_V = 0x01,
+  END_V = 0x02
+} SH1106_VerticalAlign;
 
 /**
   * @brief Initializes the display sending the appropiate I2C commands
@@ -90,6 +103,8 @@ void SH1106_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t widt
   * @version WIP
   */
 void SH1106_WriteLetter(uint8_t fontmap[][5], uint8_t index, uint8_t x, uint8_t y);
+
+void SH1106_Print(char *text, SH1106_HorizontalAlign h_align, SH1106_VerticalAlign v_align);
 
 /**
   * @brief Clears the display
