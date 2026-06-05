@@ -10,6 +10,9 @@
 
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_i2c.h"
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 
 // 00111100 << 1 = 01111000 = addr [7:1] + r/w [0]
 #define SH1106_I2C_ADDR             (0x3C << 1)
@@ -38,79 +41,12 @@ typedef enum {
   END_V = 0x02
 } SH1106_VerticalAlign;
 
-/**
-  * @brief Initializes the display sending the appropiate I2C commands
-  * @param None
-  * @retval None
-  */
+
 void SH1106_Init(void);
-
-/**
-  * @brief Sends a command to the display via I2C
-  * @param command: command to be sent
-  * @retval None
-  */
-void SH1106_WriteCommand(uint8_t command);
-
-/**
-  * @brief Sends I2C data to the display
-  * @param data: the address of the first byte
-  * @param size: the number of bytes from data
-  * @retval None
-  */
-void SH1106_WriteData(uint8_t *data, uint16_t size);
-
-/**
-  * @brief Writes the content of the frame buffer into de GDDRAM
-  * @param None
-  * @retval None
-  */
-void SH1106_UpdateScreen(void);
-
-/**
-  * @brief Turns on/off the selected pixel.
-  * The byte index in the buffer is calculated using:
-  * * index = x + (y / 8) * 128
-  *
-  * Meaning: The page number (y / 8, as each page is 8 pixels high) 
-  * is multiplied by the page width (128 bytes) to skip all previous 
-  * pages. Then, the column offset (x) is added to find the exact byte.
-  *
-  * @param x: column [0, 127]
-  * @param y: row [0, 31]
-  * @param state: PIXEL_ON (0x01) or PIXEL_OFF (0x00)
-  * @retval None
-  */
-void SH1106_DrawPixel(uint8_t x, uint8_t y, SH1106_PixelState state);
-
-/**
-  * @brief Draws a monochrome bitmap on the screen
-  * @param x: starting column [0, 127]
-  * @param y: starting row [0, 31]
-  * @param bitmap: pointer to the image array
-  * @param width: image width in pixels
-  * @param height: image height in pixels
-  * @retval None
-  */
-void SH1106_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height);
-
-/**
-  * @brief Writes a letter from a font map into the display.
-  * @param index: the position of the letter in the map
-  * @param x: column [0, 127]
-  * @param y: row [0, 31]
-  * @retval None
-  * @version WIP
-  */
-void SH1106_WriteLetter(uint8_t fontmap[][5], uint8_t index, uint8_t x, uint8_t y);
-
-void SH1106_Print(char *text, SH1106_HorizontalAlign h_align, SH1106_VerticalAlign v_align);
-
-/**
-  * @brief Clears the display
-  * @param None
-  * @retval None
-  */
+void SH1106_Update_Screen(void);
 void SH1106_Clear(void);
+void SH1106_Draw_Pixel(uint8_t x, uint8_t y, SH1106_PixelState state);
+void SH1106_Draw_Bitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height);
+void SH1106_Printf(SH1106_HorizontalAlign h_align, SH1106_VerticalAlign v_align, const char *format, ...);
 
 #endif // __SH1106_H__

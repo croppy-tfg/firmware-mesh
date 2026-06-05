@@ -3,6 +3,7 @@
 #include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_hal_i2c.h"
 #include <stdint.h>
+#include <stdio.h>
 
 extern I2C_HandleTypeDef hi2c1;
 
@@ -13,7 +14,7 @@ extern I2C_HandleTypeDef hi2c1;
  */
 static uint8_t SH1106_Buffer[SH1106_BUFFER_SIZE];
 
-const uint8_t fontmap[][5] = {
+static const uint8_t SH1106_Font5x8[][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // ' '
     {0x00, 0x00, 0x5f, 0x00, 0x00}, // !
     {0x00, 0x07, 0x00, 0x07, 0x00}, // "
@@ -111,78 +112,127 @@ const uint8_t fontmap[][5] = {
     {0x10, 0x08, 0x08, 0x10, 0x08}, // ~
 };
 
+static void SH1106_Write_Command(uint8_t command);
+static void SH1106_Write_Data(uint8_t *data, uint16_t size);
+static void SH1106_Write_Letter(uint8_t index, uint8_t x, uint8_t y);
+
+/**
+  * @brief Initializes the display sending the appropiate I2C commands
+  * @param None
+  * @retval None
+  */
 void SH1106_Init(void)
 {
     HAL_Delay(100);
 
-    SH1106_WriteCommand(0xAE); // Display OFF
+    SH1106_Write_Command(0xAE); // Display OFF
 
-    SH1106_WriteCommand(0xD5); // Display Clock Divide Ratio
-    SH1106_WriteCommand(0x50); // \_ Default
+    SH1106_Write_Command(0xD5); // Display Clock Divide Ratio
+    SH1106_Write_Command(0x50); // \_ Default
 
-    SH1106_WriteCommand(0xA8); // Multiplex Ratio
-    SH1106_WriteCommand(0x3F); // \_ 64 rows to scan
+    SH1106_Write_Command(0xA8); // Multiplex Ratio
+    SH1106_Write_Command(0x3F); // \_ 64 rows to scan
 
-    SH1106_WriteCommand(0xD3); // Display Offset
-    SH1106_WriteCommand(0x00); // \_ No offset
+    SH1106_Write_Command(0xD3); // Display Offset
+    SH1106_Write_Command(0x00); // \_ No offset
 
-    SH1106_WriteCommand(0x40); // Display Start Line: 0
+    SH1106_Write_Command(0x40); // Display Start Line: 0
 
-    SH1106_WriteCommand(0xAD); // DC-DC Pump
-    SH1106_WriteCommand(0x8B); // \_ Enable charge pump
+    SH1106_Write_Command(0xAD); // DC-DC Pump
+    SH1106_Write_Command(0x8B); // \_ Enable charge pump
 
-    SH1106_WriteCommand(0xA1); // Mirror H
-    SH1106_WriteCommand(0xC8); // Mirror V
+    SH1106_Write_Command(0xA1); // Mirror H
+    SH1106_Write_Command(0xC8); // Mirror V
 
-    SH1106_WriteCommand(0xDA); // COM Pins Hardware Config
-    SH1106_WriteCommand(0x12); // 0x12 -> sequential and disable remap
+    SH1106_Write_Command(0xDA); // COM Pins Hardware Config
+    SH1106_Write_Command(0x12); // 0x12 -> sequential and disable remap
 
-    SH1106_WriteCommand(0x81); // Contrast Control
-    SH1106_WriteCommand(0xBF); // \_ Medium-High brightness
+    SH1106_Write_Command(0x81); // Contrast Control
+    SH1106_Write_Command(0xBF); // \_ Medium-High brightness
 
-    SH1106_WriteCommand(0xD9); // Pre-charge Period
-    SH1106_WriteCommand(0x22); // \_ 0x22
+    SH1106_Write_Command(0xD9); // Pre-charge Period
+    SH1106_Write_Command(0x22); // \_ 0x22
 
-    SH1106_WriteCommand(0xDB); // VCOMH Deselect Level
-    SH1106_WriteCommand(0x35); // \_ 0x35
+    SH1106_Write_Command(0xDB); // VCOMH Deselect Level
+    SH1106_Write_Command(0x35); // \_ 0x35
 
-    SH1106_WriteCommand(0xA4); // Resume content from GDDRAM
-    SH1106_WriteCommand(0xA6); // Set entire display ON
+    SH1106_Write_Command(0xA4); // Resume content from GDDRAM
+    SH1106_Write_Command(0xA6); // Set entire display ON
 
     SH1106_Clear();
-    SH1106_UpdateScreen();
+    SH1106_Update_Screen();
 
-    SH1106_WriteCommand(0xAF); // Display ON
+    SH1106_Write_Command(0xAF); // Display ON
 }
 
-void SH1106_WriteCommand(uint8_t command)
+/**
+  * @brief Sends a command to the display via I2C
+  * @param command: command to be sent
+  * @retval None
+  */
+static void SH1106_Write_Command(uint8_t command)
 {
     // 0x00 -> sending a command
     HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_COMMAND_ADDR, 1,
         &command, 1, HAL_MAX_DELAY);
 }
 
-void SH1106_WriteData(uint8_t *data, uint16_t size)
+/**
+  * @brief Sends I2C data to the display
+  * @param data: the address of the first byte
+  * @param size: the number of bytes from data
+  * @retval None
+  */
+static void SH1106_Write_Data(uint8_t *data, uint16_t size)
 {
     // 0x40 -> sending data to GDDRAM
     HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_DATA_ADDR, 1,
         data, size, HAL_MAX_DELAY);
 }
 
-void SH1106_UpdateScreen(void) 
+/**
+  * @brief Writes the content of the frame buffer into de GDDRAM
+  * @param None
+  * @retval None
+  */
+void SH1106_Update_Screen(void) 
 {
     for (uint8_t i = 0; i < 8; i++) {
-        SH1106_WriteCommand(0xB0 + i); // Page address
-        SH1106_WriteCommand(0x02); // Lower column offset
-        SH1106_WriteCommand(0x10); // Higher column offset
+        SH1106_Write_Command(0xB0 + i); // Page address
+        SH1106_Write_Command(0x02); // Lower column offset
+        SH1106_Write_Command(0x10); // Higher column offset
 
-        // Dumps the content of the buffer page by page (selected
-        // by i * SH1106_WIDTH) to the display (128B each time)
-        SH1106_WriteData(&SH1106_Buffer[SH1106_WIDTH * i], SH1106_WIDTH);
+        // Dumps the content of the buffer to the display page by page 
+        SH1106_Write_Data(&SH1106_Buffer[SH1106_WIDTH * i], SH1106_WIDTH);
     }
 }
 
-void SH1106_DrawPixel(uint8_t x, uint8_t y, SH1106_PixelState state) 
+/**
+  * @brief Clears the display
+  * @param None
+  * @retval None
+  */
+void SH1106_Clear(void) 
+{
+    memset(SH1106_Buffer, 0x00, SH1106_BUFFER_SIZE);
+}
+
+/**
+  * @brief Turns on/off the selected pixel.
+  * The byte index in the buffer is calculated using:
+  * index = x + (y / 8) * 128
+  *
+  * Meaning: The page number (y / 8, as each page is 8 pixels high) 
+  * is multiplied by the page width (128 bytes) to skip all previous 
+  * pages. Then, the column offset (x) is added to find the exact byte,
+  * then the exact bit is selected using mod 8.
+  *
+  * @param x: column [0, 127]
+  * @param y: row [0, 31]
+  * @param state: PIXEL_ON (0x01) or PIXEL_OFF (0x00)
+  * @retval None
+  */
+void SH1106_Draw_Pixel(uint8_t x, uint8_t y, SH1106_PixelState state) 
 {
     if (x >= SH1106_WIDTH || y >= SH1106_HEIGHT) return; // out of range
 
@@ -192,38 +242,74 @@ void SH1106_DrawPixel(uint8_t x, uint8_t y, SH1106_PixelState state)
         SH1106_Buffer[x + (y / 8) * SH1106_WIDTH] &= ~(1 << (y % 8));
 }
 
-void SH1106_DrawBitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height)
+/**
+  * @brief Draws a monochrome bitmap on the screen
+  * @param x: starting column [0, 127]
+  * @param y: starting row [0, 31]
+  * @param bitmap: pointer to the image array
+  * @param width: image width in pixels
+  * @param height: image height in pixels
+  * @retval None
+  */
+void SH1106_Draw_Bitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height)
 {
     for (uint8_t i = 0; i < width; i++) {
         for (uint8_t j = 0; j < height; j++) {
             // if the bit corresponding to the actual pixel is ON, it's drawn
             if (bitmap[i + (j / 8) * width] & (1 << (j % 8))) {
-                SH1106_DrawPixel(x + i, y + j, PIXEL_ON);
+                SH1106_Draw_Pixel(x + i, y + j, PIXEL_ON);
             }
         }
     }
 }
 
-void SH1106_WriteLetter(uint8_t fontmap[][5], uint8_t index, uint8_t x, uint8_t y) 
+/**
+  * @brief Writes a letter from a font map into the display.
+  * @param index: the position of the letter in the map
+  * @param x: column [0, 127]
+  * @param y: row [0, 31]
+  * @retval None
+  */
+static void SH1106_Write_Letter(uint8_t index, uint8_t x, uint8_t y) 
 {
     for (uint8_t i = 0; i < 5; i++) {
-        uint8_t column = fontmap[index][i];
+        uint8_t column = SH1106_Font5x8[index][i];
         // the letter is drawn column by column
         for (uint8_t j = 0; j < 8; j++) {
             if ((column >> j) & 0x01) {
-                SH1106_DrawPixel(x + i, y + j, PIXEL_ON);
+                SH1106_Draw_Pixel(x + i, y + j, PIXEL_ON);
             }
         }
     }
 }
 
-void SH1106_Print(char *text, SH1106_HorizontalAlign h_align, SH1106_VerticalAlign v_align)
+/**
+ * @brief Writes a formatted string from a font map into the display.
+ * @param h_align: horizontal alignment
+ * @param v_align: vertical alignment
+ * @param format: the formatted text to write
+ * @retval None
+ */
+void SH1106_Printf(SH1106_HorizontalAlign h_align, SH1106_VerticalAlign v_align, const char *format, ...)
 {
+    char buffer[64];
+    va_list args;
+    // initializing 'args' pointer
+    va_start(args, format);
+    // reads format char by char and if it finds '%'
+    // then retrieves the value of the M3's stack
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    // destroys the 'args' pointer
+    va_end(args);
+    
+    // number of characters
     uint8_t text_len = 0;
-    while (text[text_len] != '\0') text_len++;
+    while (buffer[text_len] != '\0') text_len++;
 
+    // 5 pixels by character + 1 pixel for spacing
     uint8_t total_width = text_len * 6; 
-    uint8_t total_height = 8; // one page = 8 bits
+    // one page = 8 bits
+    uint8_t total_height = 8;
 
     uint8_t x_pos = 0;
     uint8_t y_pos = 0;
@@ -245,13 +331,6 @@ void SH1106_Print(char *text, SH1106_HorizontalAlign h_align, SH1106_VerticalAli
     }
 
     for (uint8_t i = 0; i < text_len; i++) {
-        SH1106_WriteLetter(fontmap, text[i] - 32, x_pos + (i * 6), y_pos);
-    }
-}
-
-void SH1106_Clear(void) 
-{
-    for (uint16_t i = 0; i < SH1106_BUFFER_SIZE; i++) {
-        SH1106_Buffer[i] = 0x00;
+        SH1106_Write_Letter(buffer[i] - 32, x_pos + (i * 6), y_pos);
     }
 }

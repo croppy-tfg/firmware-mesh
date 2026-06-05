@@ -94,9 +94,10 @@ int main(void)
   SH1106_Init();
   SH1106_Clear();
 
-  SH1106_Print("BOMBARDEEN LA US", CENTER_H, CENTER_V);
+  SH1106_Printf(CENTER_H, CENTER_V, "Hi, I'm %s", "Jose");
+  SH1106_Printf(CENTER_H, END_V, "and I'm %d years old", 21);
 
-  SH1106_UpdateScreen();
+  SH1106_Update_Screen();
   /* USER CODE END 2 */
 
   /* Infinite loop */
