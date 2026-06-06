@@ -1,9 +1,4 @@
 #include "sh1106.h"
-#include "stm32f1xx_hal.h"
-#include "stm32f1xx_hal_def.h"
-#include "stm32f1xx_hal_i2c.h"
-#include <stdint.h>
-#include <stdio.h>
 
 extern I2C_HandleTypeDef hi2c1;
 
@@ -114,10 +109,59 @@ static const uint8_t SH1106_Font5x8[][5] = {
 
 static void SH1106_Write_Command(uint8_t command);
 static void SH1106_Write_Data(uint8_t *data, uint16_t size);
-static void SH1106_Write_Letter(uint8_t index, uint8_t x, uint8_t y);
+static void SH1106_Write_Letter(uint8_t index, uint8_t x, uint8_t y, SH1106_PixelState state);
+
+/**
+  * @brief Sends a command to the display via I2C
+  *
+  * @param command: command to be sent
+  * @retval None
+  */
+static void SH1106_Write_Command(uint8_t command)
+{
+    // 0x00 -> sending a command
+    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_COMMAND_ADDR, 1,
+        &command, 1, HAL_MAX_DELAY);
+}
+
+/**
+  * @brief Sends I2C data to the display
+  *
+  * @param data: the address of the first byte
+  * @param size: the number of bytes from data
+  * @retval None
+  */
+static void SH1106_Write_Data(uint8_t *data, uint16_t size)
+{
+    // 0x40 -> sending data to GDDRAM
+    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_DATA_ADDR, 1,
+        data, size, HAL_MAX_DELAY);
+}
+
+/**
+  * @brief Writes a letter from a font map into the display.
+  *
+  * @param index: the position of the letter in the map
+  * @param x: column [0, 127]
+  * @param y: row [0, 31]
+  * @retval None
+  */
+static void SH1106_Write_Letter(uint8_t index, uint8_t x, uint8_t y, SH1106_PixelState state) 
+{
+    for (uint8_t i = 0; i < 5; i++) {
+        uint8_t column = SH1106_Font5x8[index][i];
+        // the letter is drawn column by column
+        for (uint8_t j = 0; j < 8; j++) {
+            if ((column >> j) & 0x01) {
+                SH1106_Draw_Pixel(x + i, y + j, state);
+            }
+        }
+    }
+}
 
 /**
   * @brief Initializes the display sending the appropiate I2C commands
+  *
   * @param None
   * @retval None
   */
@@ -166,32 +210,8 @@ void SH1106_Init(void)
 }
 
 /**
-  * @brief Sends a command to the display via I2C
-  * @param command: command to be sent
-  * @retval None
-  */
-static void SH1106_Write_Command(uint8_t command)
-{
-    // 0x00 -> sending a command
-    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_COMMAND_ADDR, 1,
-        &command, 1, HAL_MAX_DELAY);
-}
-
-/**
-  * @brief Sends I2C data to the display
-  * @param data: the address of the first byte
-  * @param size: the number of bytes from data
-  * @retval None
-  */
-static void SH1106_Write_Data(uint8_t *data, uint16_t size)
-{
-    // 0x40 -> sending data to GDDRAM
-    HAL_I2C_Mem_Write(&hi2c1, SH1106_I2C_ADDR, SH1106_DATA_ADDR, 1,
-        data, size, HAL_MAX_DELAY);
-}
-
-/**
   * @brief Writes the content of the frame buffer into de GDDRAM
+  *
   * @param None
   * @retval None
   */
@@ -209,6 +229,7 @@ void SH1106_Update_Screen(void)
 
 /**
   * @brief Clears the display
+  *
   * @param None
   * @retval None
   */
@@ -218,14 +239,29 @@ void SH1106_Clear(void)
 }
 
 /**
+ * @brief Writes a formatted string from a font map into the display at the given coordinates.
+ *
+ * @param x: X
+ * @param y: Y
+ * @param format: the formatted text to write
+ * @retval None
+ */
+void SH1106_Draw_Text(uint8_t x, uint8_t y, SH1106_PixelState state, const char *text)
+{
+    for (uint8_t i = 0; i < strlen(text); i++)
+        SH1106_Write_Letter(text[i] - 32, x + (i * 6), y, state);
+}
+
+/**
   * @brief Turns on/off the selected pixel.
-  * The byte index in the buffer is calculated using:
-  * index = x + (y / 8) * 128
+  *        The byte index in the buffer is calculated using:
+  *        
+  *        index = x + (y / 8) * 128
   *
-  * Meaning: The page number (y / 8, as each page is 8 pixels high) 
-  * is multiplied by the page width (128 bytes) to skip all previous 
-  * pages. Then, the column offset (x) is added to find the exact byte,
-  * then the exact bit is selected using mod 8.
+  *        Meaning: The page number (y / 8, as each page is 8 pixels high) 
+  *        is multiplied by the page width (128 bytes) to skip all previous 
+  *        pages. Then, the column offset (x) is added to find the exact byte,
+  *        then the exact bit is selected using mod 8.
   *
   * @param x: column [0, 127]
   * @param y: row [0, 31]
@@ -244,6 +280,7 @@ void SH1106_Draw_Pixel(uint8_t x, uint8_t y, SH1106_PixelState state)
 
 /**
   * @brief Draws a monochrome bitmap on the screen
+  *
   * @param x: starting column [0, 127]
   * @param y: starting row [0, 31]
   * @param bitmap: pointer to the image array
@@ -264,73 +301,78 @@ void SH1106_Draw_Bitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t wid
 }
 
 /**
-  * @brief Writes a letter from a font map into the display.
-  * @param index: the position of the letter in the map
-  * @param x: column [0, 127]
-  * @param y: row [0, 31]
-  * @retval None
-  */
-static void SH1106_Write_Letter(uint8_t index, uint8_t x, uint8_t y) 
+ * @brief Draws a line wether it is X/Y only or it has
+ *        a slope, using the Bresenham algorithm
+ * @param x1: X1
+ * @param y1: Y1
+ * @param x2: X2
+ * @param y2: Y2
+ * @param state: PIXEL_ON/PIXEL_OFF
+ */
+void SH1106_Draw_Line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, SH1106_PixelState state)
 {
-    for (uint8_t i = 0; i < 5; i++) {
-        uint8_t column = SH1106_Font5x8[index][i];
-        // the letter is drawn column by column
-        for (uint8_t j = 0; j < 8; j++) {
-            if ((column >> j) & 0x01) {
-                SH1106_Draw_Pixel(x + i, y + j, PIXEL_ON);
-            }
+    // x-y diffs
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    
+    // left->right or right->left
+    // up->down or down->up
+    int sx = (x1 < x2) ? 1 : -1;
+    int sy = (y1 < y2) ? 1 : -1;
+    
+    // error accumulator
+    int err = dx - dy;
+
+    // init local vars
+    int x = x1;
+    int y = y1;
+
+    while (1) {
+        SH1106_Draw_Pixel(x, y, state);
+
+        // if the destination is reached
+        if (x == x2 && y == y2) break;
+
+        // temporary error variable
+        int e2 = 2 * err;
+
+        // check if we need to step along the X axis
+        if (e2 > -dy) {
+            err -= dy; // adjust error based on the Y-axis distance
+            x += sx;   // move x in the determined direction (left or right)
+        }
+        
+        // check if we need to step along the Y axis
+        if (e2 < dx) {
+            err += dx; // adjust error based on the X-axis distance
+            y += sy;   // move y in the determined direction (up or down)
         }
     }
 }
 
 /**
- * @brief Writes a formatted string from a font map into the display.
- * @param h_align: horizontal alignment
- * @param v_align: vertical alignment
- * @param format: the formatted text to write
- * @retval None
+ * @brief Draws a rectangle of a given dimensions from (x, y)
+ *
+ * @param x: X start
+ * @param y: Y start
+ * @param width: X + width
+ * @param height: Y + width
+ * @param state: PIXEL_ON/PIXEL_OFF
  */
-void SH1106_Printf(SH1106_HorizontalAlign h_align, SH1106_VerticalAlign v_align, const char *format, ...)
+void SH1106_Draw_Rectangle(uint8_t x, uint8_t y, uint8_t width, uint8_t height, SH1106_PixelState state)
 {
-    char buffer[64];
-    va_list args;
-    // initializing 'args' pointer
-    va_start(args, format);
-    // reads format char by char and if it finds '%'
-    // then retrieves the value of the M3's stack
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    // destroys the 'args' pointer
-    va_end(args);
-    
-    // number of characters
-    uint8_t text_len = 0;
-    while (buffer[text_len] != '\0') text_len++;
+    if (width == 0 || height == 0) return;
 
-    // 5 pixels by character + 1 pixel for spacing
-    uint8_t total_width = text_len * 6; 
-    // one page = 8 bits
-    uint8_t total_height = 8;
+    uint8_t x_end = x + width - 1;
+    uint8_t y_end = y + height - 1;
 
-    uint8_t x_pos = 0;
-    uint8_t y_pos = 0;
-
-    if (h_align == CENTER_H) {
-        x_pos = (SH1106_WIDTH - total_width) / 2;
-    } else if (h_align == END_H) {
-        x_pos = SH1106_WIDTH - total_width;
-    } else {
-        x_pos = 0; // START_H
+    for (uint8_t i = x; i <= x_end; i++) {
+        SH1106_Draw_Pixel(i, y, state);
+        SH1106_Draw_Pixel(i, y_end, state);
     }
 
-    if (v_align == CENTER_V) {
-        y_pos = (SH1106_HEIGHT - total_height) / 2;
-    } else if (v_align == END_V) {
-        y_pos = SH1106_HEIGHT - total_height;
-    } else {
-        y_pos = 0; // START_V
-    }
-
-    for (uint8_t i = 0; i < text_len; i++) {
-        SH1106_Write_Letter(buffer[i] - 32, x_pos + (i * 6), y_pos);
+    for (uint8_t j = y + 1; j < y_end; j++) {
+        SH1106_Draw_Pixel(x, j, state);
+        SH1106_Draw_Pixel(x_end, j, state);
     }
 }
