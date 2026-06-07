@@ -1,6 +1,31 @@
 #include "ui.h"
+#include "sh1106.h"
 
 static TaskHandle_t uiTaskHandle;
+
+static const uint8_t UI_Icons8x8[][8] = {
+    // [0] empty battery
+    {0x7C, 0x44, 0x44, 0x44, 0x44, 0x44, 0x7C, 0x10},
+    // [1] low battery
+    {0x7C, 0x7C, 0x44, 0x44, 0x44, 0x44, 0x7C, 0x10},
+    // [2] mid battery
+    {0x7C, 0x7C, 0x7C, 0x7C, 0x44, 0x44, 0x7C, 0x10},
+    // [3] full battery
+    {0x7C, 0x7C, 0x7C, 0x7C, 0x7C, 0x7C, 0x7C, 0x10},
+    // [4] water drop
+    {0x10, 0x28, 0x48, 0x84, 0x84, 0x48, 0x30, 0x00},
+    // [5] thermometer
+    {0x1C, 0x22, 0x2A, 0x2A, 0x22, 0x42, 0x3C, 0x00},
+    // [6] flask
+    {0x1C, 0x08, 0x08, 0x14, 0x22, 0x41, 0x7F, 0x00},
+    // [7] network connected
+    {0x03, 0x0F, 0x33, 0xCC, 0xCC, 0x33, 0x0F, 0x03},
+    // [8] network disconnected
+    {0x03, 0x8F, 0xBB, 0xEC, 0xEC, 0xBB, 0x8F, 0x03},
+    // [9] pump/motor
+    {0x04, 0x14, 0x24, 0xFF, 0x24, 0x28, 0x20, 0x00}
+};
+
 void UI_Handler(void *pArgs);
 
 void UI_Create_Task(void) 
@@ -19,21 +44,21 @@ void UI_Handler(void *pArgs)
 {
     uint32_t tick = osKernelSysTick();
 
-    UI_Container_t main_view = {0, 10, 128, 54, 2}; 
-    UI_Container_t left_col, right_col;
+    UI_Container_t root_screen = {0, 0, 128, 64, 2};
+    UI_Container_t status_bar_view, main_view;
 
     for(;;) {
         SH1106_Clear();
 
-        UI_Draw_Status_Bar("Croppy v1.0", false);
+        UI_Container_Split_V(&root_screen, &status_bar_view, &main_view, 18);
+        
+        UI_Draw_Status_Bar(&status_bar_view, "Croppy v1.0", true);
 
-        UI_Container_Split_H(&main_view, &left_col, &right_col, 65);
-
-        UI_Container_Draw_Text(&left_col, 0, 0,  SH1106_PIXEL_ON, "Hum: %d%%", 78);
-        UI_Container_Draw_Text(&left_col, 0, 12, SH1106_PIXEL_ON, "Tmp: %dC", 24);
-        UI_Container_Draw_Text(&left_col, 0, 24, SH1106_PIXEL_ON, "pH:  %d", 7);
-
-        UI_Container_Draw_Button(&right_col, 2, 12, 40, 20, "MENU", true);
+        UI_Container_Draw_Icon(&main_view, 0, 0, ICON_WATER_DROP, SH1106_PIXEL_ON);
+        UI_Container_Draw_Text(&main_view, 12, 0, SH1106_PIXEL_ON, "Hum: %d%%", 45);
+            
+        UI_Container_Draw_Icon(&main_view, 0, 14, ICON_FLASK, SH1106_PIXEL_ON);
+        UI_Container_Draw_Text(&main_view, 12, 14, SH1106_PIXEL_ON, "pH:  %d", 7);
 
         SH1106_Update_Screen();
 
@@ -122,16 +147,30 @@ void UI_Container_Draw_Button(const UI_Container_t *c, uint8_t rel_x, uint8_t re
     }
 }
 
-void UI_Draw_Status_Bar(const char *title, bool battery_low)
+void UI_Container_Draw_Icon(const UI_Container_t *c, uint8_t rel_x, uint8_t rel_y, UI_IconIndex_t icon, SH1106_Pixel_State_t state)
 {
-    for (uint8_t y = 0; y < 10; y++) {
-        for (uint8_t x = 0; x < 128; x++) {
+    uint8_t abs_x = c->x + c->padding + rel_x;
+    uint8_t abs_y = c->y + c->padding + rel_y;
+
+    if ((abs_x + 8 <= c->x + c->w) && (abs_y + 8 <= c->y + c->h)) {
+        SH1106_Draw_Bitmap(abs_x, abs_y, UI_Icons8x8[icon], 8, 8, state);
+    }
+}
+
+void UI_Draw_Status_Bar(const UI_Container_t *c, const char *title, bool battery_low)
+{
+    if (c == NULL) return;
+
+    for (uint8_t y = c->y; y < (c->y + c->h); y++) {
+        for (uint8_t x = c->x; x < (c->x + c->w); x++) {
             SH1106_Draw_Pixel(x, y, SH1106_PIXEL_ON);
         }
     }
-    SH1106_Draw_Text(2, 1, SH1106_PIXEL_OFF, title);
+
+    UI_Container_Draw_Text(c, 0, 1, SH1106_PIXEL_OFF, title);
 
     if (battery_low) {
-        SH1106_Draw_Text(109, 1, SH1106_PIXEL_OFF, "BAT");
+        uint8_t icon_rel_x = c->w - 8 - (c->padding * 2);
+        UI_Container_Draw_Icon(c, icon_rel_x, 1, ICON_BATTERY_LOW, SH1106_PIXEL_OFF);
     }
 }

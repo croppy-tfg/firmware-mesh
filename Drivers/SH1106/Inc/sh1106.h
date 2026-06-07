@@ -69,7 +69,7 @@ void SH1106_Clear(void);
 
 void SH1106_Draw_Text(uint8_t x, uint8_t y, SH1106_Pixel_State_t state, const char *text);
 void SH1106_Draw_Pixel(uint8_t x, uint8_t y, SH1106_Pixel_State_t state);
-void SH1106_Draw_Bitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height);
+void SH1106_Draw_Bitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height, SH1106_Pixel_State_t state);
 void SH1106_Draw_Line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, SH1106_Pixel_State_t state);
 void SH1106_Draw_Rectangle(uint8_t x, uint8_t y, uint8_t width, uint8_t height, SH1106_Pixel_State_t state);
 
