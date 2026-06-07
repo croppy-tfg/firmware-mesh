@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "sh1106.h"
 #include "ui.h"
 /* USER CODE END Includes */
 
@@ -86,7 +87,20 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  const SH1106_Config_t display_config = {
+    .hi2c                   = &hi2c1,
+    .i2c_addr               = SH1106_I2C_ADDR,
+    .contrast               = 0x80, // medium-high contrast
+    .multiplex_ratio        = 0x3F, // 64 rows
+    .display_offset         = 0x00, // no offset
+    .start_line             = 0x40, // start at line 0
+    .osc_freq_div_ratio     = 0x50, // POR
+    .pump_voltage           = SH1106_PUMP_8_0V, // POR
+    .com_pins_config        = SH1106_COM_ALTERNATIVE, // POR
+    .mirror                 = SH1106_MIRROR_BOTH // POR
+  };
 
+  SH1106_Init(&display_config);
   /* USER CODE END Init */
 
   /* Configure the system clock */
