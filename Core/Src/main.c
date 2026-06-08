@@ -89,7 +89,8 @@ int main(void)
   /* USER CODE BEGIN Init */
   const SH1106_Config_t display_config = {
     .hi2c                   = &hi2c1,
-    .i2c_addr               = SH1106_I2C_ADDR,
+    // 00111100 << 1 = 01111000 = addr [7:1] + r/w [0]
+    .i2c_addr               = (0x3C << 1),
     .contrast               = 0x80, // medium-high contrast
     .multiplex_ratio        = 0x3F, // 64 rows
     .display_offset         = 0x00, // no offset
@@ -99,8 +100,6 @@ int main(void)
     .com_pins_config        = SH1106_COM_ALTERNATIVE, // POR
     .mirror                 = SH1106_MIRROR_BOTH // POR
   };
-
-  SH1106_Init(&display_config);
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -114,6 +113,7 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  SH1106_Init(&display_config);
 
   /* USER CODE END 2 */
 
