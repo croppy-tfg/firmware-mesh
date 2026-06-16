@@ -190,14 +190,17 @@ void SH1106_Draw_Pixel(uint8_t x, uint8_t y, SH1106_Pixel_State_t state)
         SH1106_Buffer[x + (y / 8) * SH1106_WIDTH] &= ~(1 << (y % 8));
 }
 
+// column major, MSB
 void SH1106_Draw_Bitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t width, uint8_t height, SH1106_Pixel_State_t state)
 {
-    for (uint8_t i = 0; i < width; i++) {
-        for (uint8_t j = 0; j < height; j++) {
-            // if the bit corresponding to the actual pixel is ON, it's drawn
-            if (bitmap[i + (j / 8) * width] & (1 << (j % 8))) {
-                SH1106_Draw_Pixel(x + i, y + j, state);
-            }
+    uint8_t bytes_per_row = (width + 7) / 8;
+
+    for (uint8_t col = 0; col < width; col++) {
+        for (uint8_t row = 0; row < height; row++) {
+            uint8_t index = (col * bytes_per_row) + (row / 8);
+            uint8_t is_on = bitmap[index] & (0x80 >> (row % 8));
+            if (is_on)
+                SH1106_Draw_Pixel(x + row, y + col, state);
         }
     }
 }

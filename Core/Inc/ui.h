@@ -27,16 +27,20 @@ typedef struct {
 } UI_Container_t;
 
 typedef enum {
-  ICON_BATTERY_EMPTY = 0,
-  ICON_BATTERY_LOW,
-  ICON_BATTERY_HALF,
-  ICON_BATTERY_FULL,
-  ICON_WATER_DROP,
-  ICON_THERMOMETER,
-  ICON_FLASK,
-  ICON_WIFI_OK,
-  ICON_WIFI_DISC,
-  ICON_PUMP_ON,
+  // 15x15
+  ICON_15x15_HUMIDITY = 0,
+  ICON_15x15_NPK,
+  ICON_15x15_PH,
+  ICON_15x15_TEMPERATURE,
+
+  // 7x7
+  ICON_7x7_BATTERY_EMPTY = 100, 
+  ICON_7x7_BATTERY_LOW,
+  ICON_7x7_BATTERY_HALF,
+  ICON_7x7_BATTERY_ALMOST_FULL,
+  ICON_7x7_BATTERY_FULL,
+  ICON_7x7_NET_CONNECTED,
+  ICON_7x7_NET_DISCONNECTED,
 } UI_IconIndex_t;
 
 void UI_Create_Task(void);
@@ -48,6 +52,6 @@ void UI_Container_Draw_Text(const UI_Container_t *c, uint8_t rel_x, uint8_t rel_
 void UI_Container_Draw_Button(const UI_Container_t *c, uint8_t rel_x, uint8_t rel_y, uint8_t width, uint8_t height, const char* label, bool is_focused);
 void UI_Container_Draw_Icon(const UI_Container_t *c, uint8_t rel_x, uint8_t rel_y, UI_IconIndex_t icon, SH1106_Pixel_State_t state);
 
-void UI_Draw_Status_Bar(const UI_Container_t *c, const char *title, bool battery_low);
+void UI_Draw_Status_Bar(const UI_Container_t *c, const char *title, uint8_t battery_level, bool connected);
 
 #endif // __UI_H__

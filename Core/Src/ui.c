@@ -3,6 +3,7 @@
 #include "font_10x16.h"
 #include "font_5x8.h"
 #include "icons.h"
+#include <stdint.h>
 
 static TaskHandle_t uiTaskHandle;
 
@@ -32,11 +33,16 @@ void UI_Handler(void *pArgs)
 
         UI_Container_Split_V(&root_screen, &status_bar_view, &main_view, 18);
         
-        UI_Draw_Status_Bar(&status_bar_view, "Croppy v1.0", true);
+        UI_Draw_Status_Bar(&status_bar_view, "Croppy v1.0", 75, true);
 
-        UI_Container_Draw_Text(&main_view, 0, 2, SH1106_PIXEL_ON, &Font_10x16, "Hum: %d%%", 100);
-        UI_Container_Draw_Text(&main_view, 0, 18, SH1106_PIXEL_ON, &Font_10x16, "pH:  %d", 14);
-        UI_Container_Draw_Text(&main_view, 0, 34, SH1106_PIXEL_ON, &Font_10x16, "NPK: %d%%", 100);
+        UI_Container_Draw_Icon(&main_view, 0, 2, ICON_15x15_HUMIDITY, SH1106_PIXEL_ON);
+        UI_Container_Draw_Text(&main_view, 17, 2, SH1106_PIXEL_ON, &Font_10x16, "Hum: %d%%", 100);
+        
+        UI_Container_Draw_Icon(&main_view, 0, 18, ICON_15x15_PH, SH1106_PIXEL_ON);
+        UI_Container_Draw_Text(&main_view, 17, 18, SH1106_PIXEL_ON, &Font_10x16, "pH:  %d", 14);
+        
+        UI_Container_Draw_Icon(&main_view, 0, 34, ICON_15x15_NPK, SH1106_PIXEL_ON);
+        UI_Container_Draw_Text(&main_view, 17, 34, SH1106_PIXEL_ON, &Font_10x16, "NPK: %d%%", 100);
 
         SH1106_Update_Screen();
 
@@ -142,12 +148,23 @@ void UI_Container_Draw_Icon(const UI_Container_t *c, uint8_t rel_x, uint8_t rel_
     uint8_t abs_x = c->x + c->padding + rel_x;
     uint8_t abs_y = c->y + c->padding + rel_y;
 
+    const uint8_t *bitmap_ptr = NULL;
+    uint8_t size = 0;
+
+    if (icon > ICON_7x7_BATTERY_EMPTY) {
+        bitmap_ptr = UI_Icons7x7[icon - ICON_7x7_BATTERY_EMPTY];
+        size = 7;
+    } else {
+        bitmap_ptr = UI_Icons15x15[icon];
+        size = 15;
+    }
+
     if ((abs_x + 8 <= c->x + c->w) && (abs_y + 8 <= c->y + c->h)) {
-        SH1106_Draw_Bitmap(abs_x, abs_y, UI_Icons15x15[icon], 15, 15, state);
+        SH1106_Draw_Bitmap(abs_x, abs_y, bitmap_ptr, size, size, state);
     }
 }
 
-void UI_Draw_Status_Bar(const UI_Container_t *c, const char *title, bool battery_low)
+void UI_Draw_Status_Bar(const UI_Container_t *c, const char *title, uint8_t battery_level, bool connected)
 {
     if (c == NULL) return;
 
@@ -159,8 +176,24 @@ void UI_Draw_Status_Bar(const UI_Container_t *c, const char *title, bool battery
 
     UI_Container_Draw_Text(c, 0, 1, SH1106_PIXEL_OFF, &Font_5x8, title);
 
-    if (battery_low) {
-        uint8_t icon_rel_x = c->w - 8 - (c->padding * 2);
-        UI_Container_Draw_Icon(c, icon_rel_x, 1, ICON_BATTERY_LOW, SH1106_PIXEL_OFF);
+    uint8_t battery_rel_x = c->w - 7 - (c->padding * 2);
+    uint8_t net_rel_x = c->w - 21;
+
+    if (battery_level < 10) {
+        UI_Container_Draw_Icon(c, battery_rel_x, 1, ICON_7x7_BATTERY_EMPTY, SH1106_PIXEL_OFF);
+    } else if (battery_level >= 10 && battery_level < 25) {
+        UI_Container_Draw_Icon(c, battery_rel_x, 1, ICON_7x7_BATTERY_LOW, SH1106_PIXEL_OFF);
+    } else if (battery_level >= 25 && battery_level < 50) {
+        UI_Container_Draw_Icon(c, battery_rel_x, 1, ICON_7x7_BATTERY_HALF, SH1106_PIXEL_OFF);
+    } else if (battery_level >= 50 && battery_level < 75) {
+        UI_Container_Draw_Icon(c, battery_rel_x, 1, ICON_7x7_BATTERY_ALMOST_FULL, SH1106_PIXEL_OFF);
+    } else if (battery_level >= 75 && battery_level <= 100) {
+        UI_Container_Draw_Icon(c, battery_rel_x, 1, ICON_7x7_BATTERY_FULL, SH1106_PIXEL_OFF);
+    }
+
+    if (connected) {
+        UI_Container_Draw_Icon(c, net_rel_x, 1, ICON_7x7_NET_CONNECTED, SH1106_PIXEL_OFF);
+    } else {
+        UI_Container_Draw_Icon(c, net_rel_x, 1, ICON_7x7_NET_DISCONNECTED, SH1106_PIXEL_OFF);
     }
 }

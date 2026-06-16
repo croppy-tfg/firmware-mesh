@@ -46,6 +46,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     Drivers/SH1106/Src/sh1106.c
+    Drivers/BME280/Src/bme280.c
     Core/Src/ui.c
 )
 
@@ -53,6 +54,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     Drivers/SH1106/Inc
+    Drivers/BME280/Inc
 )
 
 # Add project symbols (macros)
