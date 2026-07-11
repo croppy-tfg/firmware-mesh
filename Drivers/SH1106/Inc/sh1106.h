@@ -8,8 +8,8 @@
 #ifndef __SH1106_H__
 #define __SH1106_H__
 
-#include "stm32f1xx_hal.h"
-#include "stm32f1xx_hal_i2c.h"
+#include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_i2c.h"
 #include "cmsis_os.h"
 #include <stdint.h>
 #include <stdbool.h>

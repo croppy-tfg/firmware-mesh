@@ -1,5 +1,5 @@
 #include "sh1106.h"
-#include "stm32f1xx_hal_i2c.h"
+#include "stm32f4xx_hal_i2c.h"
 
 /**
  * @brief The size of the display is 128x64 px. The display data 
